@@ -3,10 +3,12 @@ import prompts from "prompts";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { ReadableStream } from "node:stream/web";
+import os from "node:os";
+import generateServerProperties from "./generateServerProperties";
 
 type FetchInput = string | URL | globalThis.Request;
 type FabricMetaVersion = {
@@ -27,10 +29,6 @@ async function downloadFile(
   mainDirectory: string,
   relativeDestination: string
 ) {
-  console.log(mainDirectory);
-  console.log(relativeDestination);
-  console.log(path.resolve(mainDirectory, relativeDestination));
-
   const res = await fetch(url);
   const destination = path.resolve(mainDirectory, relativeDestination);
   const fileStream = fs.createWriteStream(destination);
@@ -156,6 +154,7 @@ const questions: prompts.PromptObject<string>[] = [
       { title: "No Chat Reports", value: "noChatReports" },
       { title: "Simple Voice Chat", value: "voicechat" },
     ],
+    instructions: false,
   },
   {
     type: "multiselect",
@@ -179,12 +178,13 @@ const questions: prompts.PromptObject<string>[] = [
       },
       { title: "Hide online players", value: "hideOnlinePlayers" },
     ],
+    instructions: false,
   },
   {
     type: "confirm",
-    name: "value",
-    message: "Agree to the Minecraft EULA?",
-    initial: true,
+    name: "eula",
+    message: "Agree to the Minecraft EULA (https://aka.ms/MinecraftEULA)?",
+    initial: false,
   },
 ];
 let details = await prompts(questions);
@@ -220,3 +220,26 @@ if (fabricDownloaded) {
   ];
   await downloadMods(modIds, directory);
 }
+
+const fileSpinner = ora("Writing extra files").start();
+await writeFile(
+  path.resolve(directory, "server.properties"),
+  generateServerProperties(details.port, details.properties)
+);
+
+const windows = os.type() == "Windows_NT";
+await writeFile(
+  path.resolve(directory, `start.${windows ? "cmd" : "sh"}`),
+  `java -Xmx2G -jar fabric.jar nogui${windows ? "\nPAUSE" : ""}`
+);
+
+if (details.eula) {
+  await writeFile(path.resolve(directory, "eula.txt"), "eula=true");
+}
+fileSpinner.succeed();
+console.log(
+  `Server created at ${path.relative(
+    path.dirname(fileURLToPath(import.meta.url)),
+    directory
+  )}`
+);
