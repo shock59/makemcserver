@@ -61,6 +61,12 @@ const questions: prompts.PromptObject<string>[] = [
         title: "Disable enforce secure profiles",
         value: "noSecureProfiles",
       },
+      {
+        title: "Offline mode",
+        value: "offlineMode",
+        description:
+          "WARNING: Offline mode is insecure and should only be used for testing",
+      },
       { title: "Hide online players", value: "hideOnlinePlayers" },
     ],
   },
