@@ -3,7 +3,7 @@ import prompts from "prompts";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { ReadableStream } from "node:stream/web";
@@ -228,15 +228,23 @@ await writeFile(
 );
 
 const windows = os.type() == "Windows_NT";
+const startScriptPath = path.resolve(
+  directory,
+  `start.${windows ? "cmd" : "sh"}`
+);
 await writeFile(
-  path.resolve(directory, `start.${windows ? "cmd" : "sh"}`),
+  startScriptPath,
   `java -Xmx2G -jar fabric.jar nogui${windows ? "\nPAUSE" : ""}`
 );
+if (!windows) {
+  await chmod(startScriptPath, "755");
+}
 
 if (details.eula) {
   await writeFile(path.resolve(directory, "eula.txt"), "eula=true");
 }
 fileSpinner.succeed();
+
 console.log(
   `Server created at ${path.relative(
     path.dirname(fileURLToPath(import.meta.url)),
