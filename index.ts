@@ -14,14 +14,24 @@ type FetchInput = string | URL | globalThis.Request;
 type FabricMetaVersion = {
   version: string;
 };
+type ModrithProject = {
+  title: string;
+  game_versions: string[];
+};
 type ModrinthVersion = {
   id: string;
   version_type: "release" | "beta" | "alpha";
   files: { filename: string; url: string }[];
 };
 
-async function fetchJson(input: FetchInput, init: RequestInit = {}) {
-  return await (await fetch(input, init)).json();
+async function fetchJson(input: FetchInput) {
+  return await (
+    await fetch(input, {
+      headers: {
+        "User-Agent": "shock59/makemcserver/development",
+      },
+    })
+  ).json();
 }
 
 async function downloadFile(
@@ -68,21 +78,26 @@ async function downloadFabricJar(minecraftVersion: string, directory: string) {
 
 async function downloadMods(modIds: string[], directory: string) {
   for (const modId of modIds) {
-    const spinner = ora(`Fetching mod ${modId}`).start();
+    const spinner = ora(`Fetching mod id ${modId}`).start();
+
+    const project: ModrithProject = await fetchJson(
+      encodeURI(`https://api.modrinth.com/v2/project/${modId}`)
+    );
+    const modName = project.title;
+    if (!project.game_versions.includes(details.version)) {
+      spinner.fail(`Mod ${modName} is not available for this version`);
+      continue;
+    }
+    spinner.text = `Fetching mod ${modName}`;
 
     const versions: ModrinthVersion[] = await fetchJson(
       encodeURI(
         `https://api.modrinth.com/v2/project/${modId}/version?loaders=["fabric"]&game_versions=["${details.version}"]`
-      ),
-      {
-        headers: {
-          "User-Agent": "shock59/makemcserver/development",
-        },
-      }
+      )
     );
 
     if (versions.length == 0) {
-      spinner.fail(`Mod ${modId} is not available for this version`);
+      spinner.fail(`Mod ${modName} is not available for this version`);
       continue;
     }
 
@@ -102,7 +117,7 @@ async function downloadMods(modIds: string[], directory: string) {
     });
     const file = versions[0].files[0];
 
-    spinner.text = `Downloading mod ${modId}`;
+    spinner.text = `Downloading mod ${modName}`;
     await downloadFile(file.url, directory, path.join("mods", file.filename));
 
     spinner.succeed();
