@@ -8,18 +8,18 @@ import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { ReadableStream } from "node:stream/web";
 import os from "node:os";
-import generateServerProperties from "./generateServerProperties";
+import generateServerProperties from "./generateServerProperties.js";
 import { parse } from "yaml";
 import envPaths from "env-paths";
-import { Config } from "./configTypes";
+import { Config } from "./configTypes.js";
 import {
   FabricMetaVersion,
   ModrinthProject,
   ModrinthVersion,
   MojangFullVersion,
   MojangVersion,
-} from "./responseTypes";
-import defaultConfig from "./defaultConfig";
+} from "./responseTypes.js";
+import defaultConfig from "./defaultConfig.js";
 
 type FetchInput = string | URL | globalThis.Request;
 

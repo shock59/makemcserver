@@ -1,4 +1,4 @@
-import { Config } from "./configTypes";
+import { Config } from "./configTypes.js";
 
 const defaultConfig: Config = {
   defaultMods: ["P7dR8mSH"],
