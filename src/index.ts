@@ -20,6 +20,7 @@ import {
   MojangVersion,
 } from "./responseTypes.js";
 import defaultConfig from "./defaultConfig.js";
+import { cwd } from "node:process";
 
 type FetchInput = string | URL | globalThis.Request;
 
@@ -228,10 +229,8 @@ const fullVersionInformation: MojangFullVersion = await fetchJson(
 const javaVersion = fullVersionInformation.javaVersion.majorVersion;
 mojangSpinner.succeed();
 
-const directory = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  details.directory
-);
+console.log(cwd());
+const directory = path.resolve(cwd(), details.directory);
 const modsDirectory = path.resolve(directory, "mods");
 if (!fs.existsSync(directory)) await mkdir(directory);
 if (!fs.existsSync(modsDirectory)) await mkdir(modsDirectory);
