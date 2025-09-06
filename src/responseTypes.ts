@@ -17,6 +17,11 @@ export type MojangVersion = {
   url: string;
 };
 export type MojangFullVersion = {
+  downloads: {
+    server?: {
+      url: string;
+    };
+  };
   javaVersion: {
     majorVersion: number;
   };

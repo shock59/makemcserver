@@ -69,9 +69,20 @@ async function downloadFabricJar(minecraftVersion: string, directory: string) {
   );
   const installerVersion = installerVersions[0].version;
 
-  spinner.text = "Downloading Fabric";
+  spinner.text = "Downloading Fabric server";
   const jarUrl = `https://meta.fabricmc.net/v2/versions/loader/${minecraftVersion}/${loaderVersion}/${installerVersion}/server/jar`;
-  await downloadFile(jarUrl, directory, "fabric.jar");
+  await downloadFile(jarUrl, directory, "server.jar");
+  spinner.succeed();
+  return true;
+}
+
+async function downloadVanillaJar(version: MojangFullVersion) {
+  const spinner = ora("Downloading vanilla server").start();
+  if (!version.downloads.server) {
+    spinner.fail("There is no server jar for this version");
+    return false;
+  }
+  await downloadFile(version.downloads.server.url, directory, "server.jar");
   spinner.succeed();
   return true;
 }
@@ -250,6 +261,9 @@ if (fabricDownloaded) {
       : []),
   ];
   await downloadMods(modIds, directory);
+} else {
+  const downloadedVanillaJar = await downloadVanillaJar(fullVersionInformation);
+  if (!downloadedVanillaJar) process.exit();
 }
 
 const fileSpinner = ora("Writing extra files").start();
@@ -266,7 +280,7 @@ const startScriptPath = path.resolve(
 );
 await writeFile(
   startScriptPath,
-  `${javaPath} -Xmx2G -jar fabric.jar nogui${windows ? "\nPAUSE" : ""}`
+  `${javaPath} -Xmx2G -jar server.jar nogui${windows ? "\nPAUSE" : ""}`
 );
 if (!windows) {
   await chmod(startScriptPath, "755");
