@@ -229,7 +229,6 @@ const fullVersionInformation: MojangFullVersion = await fetchJson(
 const javaVersion = fullVersionInformation.javaVersion.majorVersion;
 mojangSpinner.succeed();
 
-console.log(cwd());
 const directory = path.resolve(cwd(), details.directory);
 const modsDirectory = path.resolve(directory, "mods");
 if (!fs.existsSync(directory)) await mkdir(directory);
