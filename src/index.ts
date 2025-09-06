@@ -27,7 +27,7 @@ async function fetchJson(input: FetchInput) {
   return await (
     await fetch(input, {
       headers: {
-        "User-Agent": "shock59/makemcserver/development",
+        "User-Agent": "shock59/makemcserver",
       },
     })
   ).json();
