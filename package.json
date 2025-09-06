@@ -1,7 +1,7 @@
 {
   "name": "makemcserver",
   "description": "A cli tool to easily create a new Minecraft server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "bin": {
     "makemcserver": "dist/index.js"
   },
