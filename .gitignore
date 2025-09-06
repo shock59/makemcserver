@@ -2,3 +2,4 @@ node_modules
 .vscode
 testserver
 makemcserver.yml
+dist
