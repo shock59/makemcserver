@@ -1,7 +1,7 @@
 {
   "name": "makemcserver",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "src/index.ts",
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc"
