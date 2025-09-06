@@ -2,6 +2,10 @@
 
 makemcserver is a CLI tool which can be used to easily set up a Minecraft server, useful if you need to quickly set up a server to run on your local PC without having to go into a web browser and manually download lots of files. It lets you choose any Minecraft version, and also installs the [Fabric mod loader](https://fabricmc.net/) when possible. Additionally, it allows you to install mods from [Modrinth](https://modrinth.com/) of your choice which you can specify in a config file.
 
+## Usage
+
+Run `npx makemcserver` in the terminal/command prompt.
+
 ## Configuration
 
 The configuration is stored as a YAML file which can be in the following locations:
