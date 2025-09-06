@@ -277,9 +277,4 @@ if (details.eula) {
 }
 fileSpinner.succeed();
 
-console.log(
-  `Server created at ${path.relative(
-    path.dirname(fileURLToPath(import.meta.url)),
-    directory
-  )}`
-);
+console.log(`Server created at ${path.relative(cwd(), directory)}`);
