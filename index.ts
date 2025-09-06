@@ -10,6 +10,7 @@ import { ReadableStream } from "node:stream/web";
 import os from "node:os";
 import generateServerProperties from "./generateServerProperties";
 import { parse } from "yaml";
+import envPaths from "env-paths";
 import { Config } from "./configTypes";
 import {
   FabricMetaVersion,
@@ -18,6 +19,7 @@ import {
   MojangFullVersion,
   MojangVersion,
 } from "./responseTypes";
+import defaultConfig from "./defaultConfig";
 
 type FetchInput = string | URL | globalThis.Request;
 
@@ -121,8 +123,21 @@ async function downloadMods(modIds: string[], directory: string) {
   }
 }
 
-const yaml = await readFile(".makemcserver.yml", { encoding: "utf-8" });
-const config: Config = parse(yaml);
+const windows = os.type() == "Windows_NT";
+
+const config: Config = await (async () => {
+  for (const configFileLocation of [
+    path.resolve("makemcserver.yml"),
+    path.join(envPaths("makemcserver").config, "makemcserver.yml"),
+    path.join(os.homedir(), ".makemcserver.yml"),
+  ]) {
+    if (!fs.existsSync(configFileLocation)) continue;
+    const yaml = await readFile(configFileLocation, { encoding: "utf-8" });
+    return parse(yaml);
+  }
+
+  return defaultConfig;
+})();
 
 const spinner = ora("Fetching version list").start();
 const versionManifest: {
@@ -224,8 +239,8 @@ if (!fs.existsSync(modsDirectory)) await mkdir(modsDirectory);
 const fabricDownloaded = await downloadFabricJar(details.version, directory);
 
 if (fabricDownloaded) {
-  const modIds = [
-    "P7dR8mSH", // Fabric API  https://modrinth.com/project/gvQqBUqZ
+  const modIds: string[] = [
+    ...(config.defaultMods ?? []),
     ...(config.modPresets
       ? Object.keys(config.modPresets)
           .filter((presetName) => details.mods.includes(presetName))
@@ -247,7 +262,6 @@ await writeFile(
 
 const javaPath =
   config.javaPaths?.[`${javaVersion}`] ?? config.javaPaths?.default ?? "java";
-const windows = os.type() == "Windows_NT";
 const startScriptPath = path.resolve(
   directory,
   `start.${windows ? "cmd" : "sh"}`
