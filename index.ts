@@ -3,26 +3,23 @@ import prompts from "prompts";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import { ReadableStream } from "node:stream/web";
 import os from "node:os";
 import generateServerProperties from "./generateServerProperties";
+import { parse } from "yaml";
+import { Config } from "./configTypes";
+import {
+  FabricMetaVersion,
+  ModrinthProject,
+  ModrinthVersion,
+  MojangFullVersion,
+  MojangVersion,
+} from "./responseTypes";
 
 type FetchInput = string | URL | globalThis.Request;
-type FabricMetaVersion = {
-  version: string;
-};
-type ModrithProject = {
-  title: string;
-  game_versions: string[];
-};
-type ModrinthVersion = {
-  id: string;
-  version_type: "release" | "beta" | "alpha";
-  files: { filename: string; url: string }[];
-};
 
 async function fetchJson(input: FetchInput) {
   return await (
@@ -80,7 +77,7 @@ async function downloadMods(modIds: string[], directory: string) {
   for (const modId of modIds) {
     const spinner = ora(`Fetching mod id ${modId}`).start();
 
-    const project: ModrithProject = await fetchJson(
+    const project: ModrinthProject = await fetchJson(
       encodeURI(`https://api.modrinth.com/v2/project/${modId}`)
     );
     const modName = project.title;
@@ -124,15 +121,13 @@ async function downloadMods(modIds: string[], directory: string) {
   }
 }
 
-const spinner = ora("Fetching version information").start();
+const yaml = await readFile(".makemcserver.yml", { encoding: "utf-8" });
+const config: Config = parse(yaml);
+
+const spinner = ora("Fetching version list").start();
 const versionManifest: {
-  latest: {
-    release: string;
-    snapshot: string;
-  };
-  versions: {
-    id: string;
-  }[];
+  latest: { release: string };
+  versions: MojangVersion[];
 } = await fetchJson(
   "https://launchermeta.mojang.com/mc/game/version_manifest.json"
 );
@@ -163,12 +158,17 @@ const questions: prompts.PromptObject<string>[] = [
     type: "multiselect",
     name: "mods",
     message: "Extra mods",
-    choices: [
-      { title: "Optimisations", value: "optimization", selected: true },
-      { title: "spark", value: "spark", selected: true },
-      { title: "No Chat Reports", value: "noChatReports" },
-      { title: "Simple Voice Chat", value: "voicechat" },
-    ],
+    choices: config.modPresets
+      ? Object.keys(config.modPresets).map((presetName) => ({
+          title: presetName,
+          value: presetName,
+          selected: (() => {
+            const modPreset = config.modPresets![presetName];
+            if (typeof modPreset == "string") return false;
+            return !!modPreset.default;
+          })(),
+        }))
+      : [],
     instructions: false,
   },
   {
@@ -206,6 +206,13 @@ let details = await prompts(questions);
 
 console.log("\nSetting up the server...");
 
+const mojangSpinner = ora(`Fetching ${details.version} information`).start();
+const fullVersionInformation: MojangFullVersion = await fetchJson(
+  versionManifest.versions.find((version) => version.id == details.version)!.url
+);
+const javaVersion = fullVersionInformation.javaVersion.majorVersion;
+mojangSpinner.succeed();
+
 const directory = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   details.directory
@@ -219,19 +226,15 @@ const fabricDownloaded = await downloadFabricJar(details.version, directory);
 if (fabricDownloaded) {
   const modIds = [
     "P7dR8mSH", // Fabric API  https://modrinth.com/project/gvQqBUqZ
-    ...(details.mods.includes("optimization")
-      ? [
-          "gvQqBUqZ", // Lithium          https://modrinth.com/project/gvQqBUqZ
-          "uXXizFIs", // FerriteCore      https://modrinth.com/project/uXXizFIs
-          "NRjRiSSD", // Memory Leak Fix  https://modrinth.com/project/NRjRiSSD
-          "fQEb0iXm", // Krypton          https://modrinth.com/project/fQEb0iXm
-          "VSNURh3q", // C2ME             https://modrinth.com/project/VSNURh3q
-          "KuNKN7d2", // Noisium          https://modrinth.com/project/KuNKN7d2
-        ]
+    ...(config.modPresets
+      ? Object.keys(config.modPresets)
+          .filter((presetName) => details.mods.includes(presetName))
+          .flatMap((presetName) => {
+            const modPreset = config.modPresets![presetName];
+            if (typeof modPreset == "string") return [modPreset];
+            else return modPreset.mods;
+          })
       : []),
-    ...(details.mods.includes("spark") ? ["l6YH9Als"] : []), // spark  https://modrinth.com/project/l6YH9Als
-    ...(details.mods.includes("noChatReports") ? ["qQyHxfxd"] : []), // No Chat Reports  https://modrinth.com/project/qQyHxfxd
-    ...(details.mods.includes("voicechat") ? ["9eGKb6K1"] : []), // Simple Voice Chat  https://modrinth.com/project/9eGKb6K1
   ];
   await downloadMods(modIds, directory);
 }
@@ -242,6 +245,8 @@ await writeFile(
   generateServerProperties(details.port, details.properties)
 );
 
+const javaPath =
+  config.javaPaths?.[`${javaVersion}`] ?? config.javaPaths?.default ?? "java";
 const windows = os.type() == "Windows_NT";
 const startScriptPath = path.resolve(
   directory,
@@ -249,7 +254,7 @@ const startScriptPath = path.resolve(
 );
 await writeFile(
   startScriptPath,
-  `java -Xmx2G -jar fabric.jar nogui${windows ? "\nPAUSE" : ""}`
+  `${javaPath} -Xmx2G -jar fabric.jar nogui${windows ? "\nPAUSE" : ""}`
 );
 if (!windows) {
   await chmod(startScriptPath, "755");
