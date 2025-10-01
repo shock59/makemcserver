@@ -265,7 +265,7 @@ export async function downloadMods(
     const file = versions[0].files[0];
 
     spinner.text = `Downloading mod ${modName}`;
-    await downloadFile(file.url, directory, path.join("mods", file.filename));
+    await downloadFile(file.url, directory, file.filename);
 
     spinner.succeed();
   }

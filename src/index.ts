@@ -142,9 +142,11 @@ const javaPath =
 mojangSpinner.succeed();
 
 const directory = path.resolve(cwd(), details.directory);
-const modsDirectory = path.resolve(directory, "mods");
+const modsDirectory = path.resolve(
+  directory,
+  details.software == "paper" ? "plugins" : "mods"
+);
 if (!fs.existsSync(directory)) await mkdir(directory);
-if (!fs.existsSync(modsDirectory)) await mkdir(modsDirectory);
 
 const moddedSoftwareDownloaded =
   details.software == "fabric"
@@ -158,6 +160,8 @@ const moddedSoftwareDownloaded =
     : false;
 
 if (moddedSoftwareDownloaded) {
+  if (!fs.existsSync(modsDirectory)) await mkdir(modsDirectory);
+
   const modIds: string[] = [
     ...(config.defaultMods[details.software] ?? []),
     ...(config.modPresets && config.modPresets[details.software]
@@ -170,7 +174,7 @@ if (moddedSoftwareDownloaded) {
           })
       : []),
   ];
-  await downloadMods(modIds, details.version, details.software, directory);
+  await downloadMods(modIds, details.version, details.software, modsDirectory);
 } else {
   const downloadedVanillaJar = await downloadVanillaJar(
     fullVersionInformation,
