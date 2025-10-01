@@ -26,3 +26,16 @@ export type MojangFullVersion = {
     majorVersion: number;
   };
 };
+
+export type PaperVersionList = {
+  versions: Record<string, string[]>;
+};
+
+export type PaperBuild = {
+  channel: "STABLE" | "ALPHA";
+  downloads: {
+    "server:default": {
+      url: string;
+    };
+  };
+};

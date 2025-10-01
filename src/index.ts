@@ -1,139 +1,23 @@
 import ora from "ora";
 import prompts from "prompts";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
-import { Readable } from "node:stream";
-import { finished } from "node:stream/promises";
-import { ReadableStream } from "node:stream/web";
 import os from "node:os";
 import generateServerProperties from "./generateServerProperties.js";
 import { parse } from "yaml";
 import envPaths from "env-paths";
 import { Config } from "./configTypes.js";
-import {
-  FabricMetaVersion,
-  ModrinthProject,
-  ModrinthVersion,
-  MojangFullVersion,
-  MojangVersion,
-} from "./responseTypes.js";
+import { MojangFullVersion, MojangVersion } from "./responseTypes.js";
 import defaultConfig from "./defaultConfig.js";
 import { cwd } from "node:process";
-
-type FetchInput = string | URL | globalThis.Request;
-
-async function fetchJson(input: FetchInput) {
-  return await (
-    await fetch(input, {
-      headers: {
-        "User-Agent": "shock59/makemcserver",
-      },
-    })
-  ).json();
-}
-
-async function downloadFile(
-  url: FetchInput,
-  mainDirectory: string,
-  relativeDestination: string
-) {
-  const res = await fetch(url);
-  const destination = path.resolve(mainDirectory, relativeDestination);
-  const fileStream = fs.createWriteStream(destination);
-  const readable = Readable.fromWeb(res.body as ReadableStream);
-  await finished(readable.pipe(fileStream));
-}
-
-async function downloadFabricJar(minecraftVersion: string, directory: string) {
-  const spinner = ora("Fetching Fabric information").start();
-
-  const supportedMinecraftVersions: FabricMetaVersion[] = await fetchJson(
-    "https://meta.fabricmc.net/v2/versions/game"
-  );
-  if (
-    !supportedMinecraftVersions.map((v) => v.version).includes(minecraftVersion)
-  ) {
-    spinner.fail("Fabric is not supported on this version");
-    return false;
-  }
-
-  const loaderVersions: FabricMetaVersion[] = await fetchJson(
-    "https://meta.fabricmc.net/v2/versions/loader"
-  );
-  const loaderVersion = loaderVersions[0].version;
-
-  const installerVersions: FabricMetaVersion[] = await fetchJson(
-    "https://meta.fabricmc.net/v2/versions/installer"
-  );
-  const installerVersion = installerVersions[0].version;
-
-  spinner.text = "Downloading Fabric server";
-  const jarUrl = `https://meta.fabricmc.net/v2/versions/loader/${minecraftVersion}/${loaderVersion}/${installerVersion}/server/jar`;
-  await downloadFile(jarUrl, directory, "server.jar");
-  spinner.succeed();
-  return true;
-}
-
-async function downloadVanillaJar(version: MojangFullVersion) {
-  const spinner = ora("Downloading vanilla server").start();
-  if (!version.downloads.server) {
-    spinner.fail("There is no server jar for this version");
-    return false;
-  }
-  await downloadFile(version.downloads.server.url, directory, "server.jar");
-  spinner.succeed();
-  return true;
-}
-
-async function downloadMods(modIds: string[], directory: string) {
-  for (const modId of modIds) {
-    const spinner = ora(`Fetching mod id ${modId}`).start();
-
-    const project: ModrinthProject = await fetchJson(
-      encodeURI(`https://api.modrinth.com/v2/project/${modId}`)
-    );
-    const modName = project.title;
-    if (!project.game_versions.includes(details.version)) {
-      spinner.fail(`Mod ${modName} is not available for this version`);
-      continue;
-    }
-    spinner.text = `Fetching mod ${modName}`;
-
-    const versions: ModrinthVersion[] = await fetchJson(
-      encodeURI(
-        `https://api.modrinth.com/v2/project/${modId}/version?loaders=["fabric"]&game_versions=["${details.version}"]`
-      )
-    );
-
-    if (versions.length == 0) {
-      spinner.fail(`Mod ${modName} is not available for this version`);
-      continue;
-    }
-
-    versions.sort((a, b) => {
-      switch (a.version_type) {
-        case "release":
-          return b.version_type == "release" ? 0 : -1;
-        case "beta":
-          return b.version_type == "alpha"
-            ? -1
-            : b.version_type == "beta"
-            ? 0
-            : 1;
-        case "alpha":
-          return b.version_type == "alpha" ? 0 : 1;
-      }
-    });
-    const file = versions[0].files[0];
-
-    spinner.text = `Downloading mod ${modName}`;
-    await downloadFile(file.url, directory, path.join("mods", file.filename));
-
-    spinner.succeed();
-  }
-}
+import { fetchJson, downloadFile } from "./fetching.js";
+import {
+  downloadFabricJar,
+  downloadMods,
+  downloadPaperJar,
+  downloadVanillaJar,
+} from "./jarDownloaders.js";
 
 const windows = os.type() == "Windows_NT";
 
@@ -173,6 +57,16 @@ const questions: prompts.PromptObject<string>[] = [
     message: "Minecraft version",
     choices: versionManifest.versions.map((version) => ({ title: version.id })),
     initial: versionManifest.latest.release,
+  },
+  {
+    type: "select",
+    name: "software",
+    message: "Server software",
+    choices: [
+      { title: "Fabric", value: "fabric", selected: true },
+      { title: "Paper", value: "paper" },
+      { title: "Vanilla", value: "vanilla" },
+    ],
   },
   {
     type: "number",
@@ -245,9 +139,14 @@ const modsDirectory = path.resolve(directory, "mods");
 if (!fs.existsSync(directory)) await mkdir(directory);
 if (!fs.existsSync(modsDirectory)) await mkdir(modsDirectory);
 
-const fabricDownloaded = await downloadFabricJar(details.version, directory);
+const moddedSoftwareDownloaded =
+  details.software == "fabric"
+    ? await downloadFabricJar(details.version, directory)
+    : details.software == "paper"
+    ? await downloadPaperJar(details.version, directory)
+    : false;
 
-if (fabricDownloaded) {
+if (moddedSoftwareDownloaded) {
   const modIds: string[] = [
     ...(config.defaultMods ?? []),
     ...(config.modPresets
@@ -260,9 +159,12 @@ if (fabricDownloaded) {
           })
       : []),
   ];
-  await downloadMods(modIds, directory);
+  await downloadMods(modIds, details.version, directory);
 } else {
-  const downloadedVanillaJar = await downloadVanillaJar(fullVersionInformation);
+  const downloadedVanillaJar = await downloadVanillaJar(
+    fullVersionInformation,
+    directory
+  );
   if (!downloadedVanillaJar) process.exit();
 }
 
