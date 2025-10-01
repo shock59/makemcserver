@@ -10,7 +10,6 @@ import {
 } from "./responseTypes.js";
 import { fetchJson, downloadFile } from "./fetching.js";
 import path from "node:path";
-import { promisify } from "node:util";
 import { spawn, SpawnOptionsWithoutStdio } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";

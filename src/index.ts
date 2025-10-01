@@ -11,7 +11,7 @@ import { Config } from "./configTypes.js";
 import { MojangFullVersion, MojangVersion } from "./responseTypes.js";
 import defaultConfig from "./defaultConfig.js";
 import { cwd } from "node:process";
-import { fetchJson, downloadFile } from "./fetching.js";
+import { fetchJson } from "./fetching.js";
 import {
   downloadFabricJar,
   downloadForgeJar,
