@@ -14,6 +14,7 @@ import { cwd } from "node:process";
 import { fetchJson, downloadFile } from "./fetching.js";
 import {
   downloadFabricJar,
+  downloadForgeJar,
   downloadMods,
   downloadNeoForgeJar,
   downloadPaperJar,
@@ -67,6 +68,7 @@ const questions: prompts.PromptObject<string>[] = [
       { title: "Fabric", value: "fabric", selected: true },
       { title: "Paper", value: "paper" },
       { title: "NeoForge", value: "neoforge" },
+      { title: "Forge", value: "forge" },
       { title: "Vanilla", value: "vanilla" },
     ],
   },
@@ -150,6 +152,8 @@ const moddedSoftwareDownloaded =
     ? await downloadPaperJar(details.version, directory)
     : details.software == "neoforge"
     ? await downloadNeoForgeJar(details.version, directory, javaPath)
+    : details.software == "forge"
+    ? await downloadForgeJar(details.version, directory, javaPath)
     : false;
 
 if (moddedSoftwareDownloaded) {
@@ -180,7 +184,7 @@ await writeFile(
   generateServerProperties(details.port, details.properties)
 );
 
-if (details.software != "neoforge") {
+if (!["neoforge", "forge"].includes(details.software)) {
   const startScriptPath = path.resolve(
     directory,
     `start.${windows ? "cmd" : "sh"}`

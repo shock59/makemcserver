@@ -1,19 +1,76 @@
-import ora from "ora";
+import ora, { Ora } from "ora";
 import {
   FabricMetaVersion,
   ModrinthProject,
   ModrinthVersion,
   MojangFullVersion,
-  NeoForgedVersionList as NeoForgedVersionList,
+  MavenVersionList,
   PaperBuild,
   PaperVersionList,
 } from "./responseTypes.js";
 import { fetchJson, downloadFile } from "./fetching.js";
 import path from "node:path";
 import { promisify } from "node:util";
-import { exec } from "node:child_process";
+import { spawn, SpawnOptionsWithoutStdio } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
+
+const asyncSpawn = (cmd: string, args: SpawnOptionsWithoutStdio) =>
+  new Promise<string>((resolve, reject) => {
+    const cp = spawn(cmd, args);
+    const error: string[] = [];
+    const stdout: string[] = [];
+    cp.stdout.on("data", (data) => {
+      stdout.push(data.toString());
+    });
+
+    cp.on("error", (e) => {
+      error.push(e.toString());
+    });
+
+    cp.on("close", () => {
+      if (error.length) reject(error.join(""));
+      else resolve(stdout.join(""));
+    });
+  });
+
+async function installForge(
+  directory: string,
+  javaPath: string,
+  softwareName: string,
+  spinner: Ora
+) {
+  spinner.text = `Running ${softwareName} server installer`;
+  await asyncSpawn(
+    `cd ${directory} && "${javaPath}" -jar forge-installer.jar --install${
+      softwareName == "Neoforge" ? "-server" : "Server"
+    } .`,
+    { shell: true }
+  );
+
+  spinner.text = `Finishing ${softwareName} server installation`;
+  await fs.rm(path.join(directory, "forge-installer.jar"));
+  // await fs.rm(path.join(directory, "forge-installer.jar.log"));
+
+  const windows = os.type() == "Windows_NT";
+  let runFile = await fs.readFile(
+    path.join(directory, `run.${windows ? "bat" : "sh"}`),
+    "utf-8"
+  );
+  runFile = runFile.replace("java", `${javaPath}`);
+  const startScriptPath = path.join(
+    directory,
+    `start.${windows ? "cmd" : "sh"}`
+  );
+  await fs.writeFile(startScriptPath, runFile);
+  if (!windows) {
+    await fs.chmod(startScriptPath, "755");
+  }
+  await fs.rm(path.join(directory, `run.sh`));
+  await fs.rm(path.join(directory, `run.bat`));
+
+  spinner.succeed();
+}
 
 export async function downloadFabricJar(
   minecraftVersion: string,
@@ -45,6 +102,38 @@ export async function downloadFabricJar(
   const jarUrl = `https://meta.fabricmc.net/v2/versions/loader/${minecraftVersion}/${loaderVersion}/${installerVersion}/server/jar`;
   await downloadFile(jarUrl, directory, "server.jar");
   spinner.succeed();
+  return true;
+}
+
+export async function downloadForgeJar(
+  minecraftVersion: string,
+  directory: string,
+  javaPath: string
+) {
+  const spinner = ora("Fetching Forge information").start();
+
+  const forgeVersionList: MavenVersionList = await fetchJson(
+    "https://maven.minecraftforge.net/api/maven/versions/releases/net%2Fminecraftforge%2Fforge"
+  );
+  const versions = forgeVersionList.versions.map((v) => {
+    const split = v.split("-");
+    return {
+      minecraftVersion: split[0],
+      forgeVersion: v,
+    };
+  });
+
+  const version = versions.find((v) => v.minecraftVersion == minecraftVersion);
+  if (!version) {
+    spinner.fail("Forge is not supported on this version");
+    return false;
+  }
+
+  spinner.text = "Downloading Forge server installer";
+  const jarUrl = `https://maven.minecraftforge.net/releases/net/minecraftforge/forge/${version.forgeVersion}/forge-${version.forgeVersion}-installer.jar`;
+  await downloadFile(jarUrl, directory, "forge-installer.jar");
+
+  await installForge(directory, javaPath, "Forge", spinner);
   return true;
 }
 
@@ -90,7 +179,7 @@ export async function downloadNeoForgeJar(
 ) {
   const spinner = ora("Fetching Neoforge information").start();
 
-  const neoforgeVersionList: NeoForgedVersionList = await fetchJson(
+  const neoforgeVersionList: MavenVersionList = await fetchJson(
     "https://maven.neoforged.net/api/maven/versions/releases/net%2Fneoforged%2Fneoforge"
   );
   const versions = neoforgeVersionList.versions.map((v) => {
@@ -109,36 +198,9 @@ export async function downloadNeoForgeJar(
 
   spinner.text = "Downloading Neoforge server installer";
   const jarUrl = `https://maven.neoforged.net/releases/net/neoforged/neoforge/${version.neoForgeVersion}/neoforge-${version.neoForgeVersion}-installer.jar`;
-  await downloadFile(jarUrl, directory, "neoforge-installer.jar");
+  await downloadFile(jarUrl, directory, "forge-installer.jar");
 
-  spinner.text = "Running Neoforge server installer";
-  const execAsync = promisify(exec);
-  await execAsync(
-    `cd ${directory} && "${javaPath}" -jar neoforge-installer.jar --install-server .`
-  );
-
-  spinner.text = "Finishing Neoforge server installation";
-  await fs.rm(path.join(directory, "neoforge-installer.jar"));
-  await fs.rm(path.join(directory, "neoforge-installer.jar.log"));
-
-  const windows = os.type() == "Windows_NT";
-  let runFile = await fs.readFile(
-    path.join(directory, `run.${windows ? "bat" : "sh"}`),
-    "utf-8"
-  );
-  runFile = runFile.replace("exec java", `exec ${javaPath}`);
-  const startScriptPath = path.join(
-    directory,
-    `start.${windows ? "cmd" : "sh"}`
-  );
-  await fs.writeFile(startScriptPath, runFile);
-  if (!windows) {
-    await fs.chmod(startScriptPath, "755");
-  }
-  await fs.rm(path.join(directory, `run.sh`));
-  await fs.rm(path.join(directory, `run.bat`));
-
-  spinner.succeed();
+  await installForge(directory, javaPath, "Neoforge", spinner);
   return true;
 }
 

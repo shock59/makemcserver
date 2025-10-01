@@ -27,7 +27,7 @@ export type MojangFullVersion = {
   };
 };
 
-export type NeoForgedVersionList = {
+export type MavenVersionList = {
   versions: string[];
 };
 
