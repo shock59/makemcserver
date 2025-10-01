@@ -6,7 +6,7 @@ makemcserver is a CLI tool which can be used to easily set up a Minecraft server
 
 You need [Node.js](https://nodejs.org/) installed to use the tool. To set up a NeoForge or Forge server, you will also need Java installed, which you can get from [Adoptium](https://adoptium.net/) or other providers.
 
-Run `npx makemcserver` in the terminal/command prompt.
+Once you have everything installed, simply run `npx makemcserver` in the terminal/command prompt.
 
 ## Configuration
 
