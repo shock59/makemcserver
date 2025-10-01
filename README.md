@@ -1,6 +1,6 @@
 # makemcserver
 
-makemcserver is a CLI tool which can be used to easily set up a Minecraft server, useful if you need to quickly set up a server to run on your local PC without having to go into a web browser and manually download lots of files. It lets you choose any Minecraft version, and also installs the [Fabric mod loader](https://fabricmc.net/) when possible. Additionally, it allows you to install mods from [Modrinth](https://modrinth.com/) of your choice which you can specify in a config file.
+makemcserver is a CLI tool which can be used to easily set up a Minecraft server, useful if you need to quickly set up a server to run on your local PC without having to go into a web browser and manually download lots of files. It lets you choose any Minecraft version, and also optionally installs a custom server software of your choice (either [Fabric](https://fabricmc.net/), [Paper](https://papermc.io/), [NeoForge](https://neoforged.net/), or [Forge](https://files.minecraftforge.net/net/minecraftforge/forge/)). Additionally, it allows you to install mods from [Modrinth](https://modrinth.com/) of your choice which you can specify in a config file.
 
 ## Usage
 
@@ -18,27 +18,43 @@ The configuration is stored as a YAML file which can be in the following locatio
 It can be formatted like this (all three major sections are optional):
 ```yml
 defaultMods:
-  # A list of the mods which should always be installed on the server when possible, as their Modrinth IDs.
-  # Example:
-  - "P7dR8mSH" # Fabric API
+  fabric:
+    - "P7dR8mSH" # Fabric API
 
 modPresets:
-  # A list of Modrinth mod IDs which you can choose to install each time you create a new server. This can be structured in a variety of ways.
-  # Examples:
-  "Optimization":
-    default: true
-    mods:
-      - "gvQqBUqZ" # Lithium
-      - "uXXizFIs" # FerriteCore
-      - "NRjRiSSD" # Memory Leak Fix
-      - "fQEb0iXm" # Krypton
-      - "VSNURh3q" # C2ME
-      - "KuNKN7d2" # Noisium
-  "spark":
-    default: true
-    mods: "l6YH9Als"
-  "No Chat Reports": "qQyHxfxd"
-  "Simple Voice Chat": "9eGKb6K1"
+  fabric:
+    "Optimization":
+      default: true
+      mods:
+        - "gvQqBUqZ" # Lithium
+        - "uXXizFIs" # FerriteCore
+        - "NRjRiSSD" # Memory Leak Fix
+        - "fQEb0iXm" # Krypton
+        - "VSNURh3q" # C2ME
+        - "KuNKN7d2" # Noisium
+    "spark":
+      default: true
+      mods: "l6YH9Als"
+    "No Chat Reports": "qQyHxfxd"
+    "Simple Voice Chat": "9eGKb6K1"
+  paper:
+    "FreedomChat": "MubyTbnA"
+    "Simple Voice Chat": "9eGKb6K1"
+    "WorldEdit": "1u6JkXh5"
+    "ViaVersion": "P1OZGk5p"
+    "LuckPerms": "Vebnzrzj"
+  neoforge:
+    "spark":
+      default: true
+      mods: "l6YH9Als"
+    "No Chat Reports": "qQyHxfxd"
+    "Simple Voice Chat": "9eGKb6K1"
+  forge:
+    "spark":
+      default: true
+      mods: "l6YH9Als"
+    "No Chat Reports": "qQyHxfxd"
+    "Simple Voice Chat": "9eGKb6K1"
 
 javaPaths:
   # Paths to the Java runtime for different Java versions, as well as a fallback "default" option. makemcserver will automatically select the correct Java version from this list.
