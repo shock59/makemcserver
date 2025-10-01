@@ -1,3 +1,5 @@
+export type Modloader = "fabric" | "paper" | "neoforge" | "forge";
+
 export type ModPreset =
   | {
       default?: boolean;
@@ -6,7 +8,7 @@ export type ModPreset =
   | string;
 
 export type Config = {
-  defaultMods?: string[];
-  modPresets?: Record<string, ModPreset>;
+  defaultMods?: { [K in Modloader]?: string[] };
+  modPresets?: { [K in Modloader]?: Record<string, ModPreset> };
   javaPaths?: Record<"default" | `${number}`, string>;
 };

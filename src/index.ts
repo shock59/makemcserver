@@ -73,28 +73,29 @@ const questions: prompts.PromptObject<string>[] = [
     ],
   },
   {
+    type: (prev) => (prev == "vanilla" ? null : "multiselect"),
+    name: "mods",
+    message: "Extra mods",
+    choices: (prev) =>
+      config.modPresets
+        ? Object.keys(config.modPresets[prev]).map((presetName) => ({
+            title: presetName,
+            value: presetName,
+            selected: (() => {
+              const modPreset = config.modPresets[prev][presetName];
+              if (typeof modPreset == "string") return false;
+              return !!modPreset.default;
+            })(),
+          }))
+        : [],
+    instructions: false,
+  },
+  {
     type: "number",
     name: "port",
     message: "Port number",
     initial: 25565,
     validate: (value) => value == "" || (value >= 1 && value <= 65535),
-  },
-  {
-    type: "multiselect",
-    name: "mods",
-    message: "Extra mods",
-    choices: config.modPresets
-      ? Object.keys(config.modPresets).map((presetName) => ({
-          title: presetName,
-          value: presetName,
-          selected: (() => {
-            const modPreset = config.modPresets![presetName];
-            if (typeof modPreset == "string") return false;
-            return !!modPreset.default;
-          })(),
-        }))
-      : [],
-    instructions: false,
   },
   {
     type: "multiselect",
@@ -158,18 +159,18 @@ const moddedSoftwareDownloaded =
 
 if (moddedSoftwareDownloaded) {
   const modIds: string[] = [
-    ...(config.defaultMods ?? []),
-    ...(config.modPresets
-      ? Object.keys(config.modPresets)
+    ...(config.defaultMods[details.software] ?? []),
+    ...(config.modPresets && config.modPresets[details.software]
+      ? Object.keys(config.modPresets[details.software])
           .filter((presetName) => details.mods.includes(presetName))
           .flatMap((presetName) => {
-            const modPreset = config.modPresets![presetName];
+            const modPreset = config.modPresets[details.software]![presetName];
             if (typeof modPreset == "string") return [modPreset];
             else return modPreset.mods;
           })
       : []),
   ];
-  await downloadMods(modIds, details.version, directory);
+  await downloadMods(modIds, details.version, details.software, directory);
 } else {
   const downloadedVanillaJar = await downloadVanillaJar(
     fullVersionInformation,

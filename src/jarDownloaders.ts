@@ -14,6 +14,7 @@ import { promisify } from "node:util";
 import { spawn, SpawnOptionsWithoutStdio } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
+import { Modloader } from "./configTypes.js";
 
 const asyncSpawn = (cmd: string, args: SpawnOptionsWithoutStdio) =>
   new Promise<string>((resolve, reject) => {
@@ -220,6 +221,7 @@ export async function downloadVanillaJar(
 export async function downloadMods(
   modIds: string[],
   gameVersion: string,
+  modloader: Modloader,
   directory: string
 ) {
   for (const modId of modIds) {
@@ -237,7 +239,7 @@ export async function downloadMods(
 
     const versions: ModrinthVersion[] = await fetchJson(
       encodeURI(
-        `https://api.modrinth.com/v2/project/${modId}/version?loaders=["fabric"]&game_versions=["${gameVersion}"]`
+        `https://api.modrinth.com/v2/project/${modId}/version?loaders=["${modloader}"]&game_versions=["${gameVersion}"]`
       )
     );
 
