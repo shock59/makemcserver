@@ -50,7 +50,6 @@ async function installForge(
 
   spinner.text = `Finishing ${softwareName} server installation`;
   await fs.rm(path.join(directory, "forge-installer.jar"));
-  // await fs.rm(path.join(directory, "forge-installer.jar.log"));
 
   const windows = os.type() == "Windows_NT";
   let runFile = await fs.readFile(
@@ -177,7 +176,7 @@ export async function downloadNeoForgeJar(
   directory: string,
   javaPath: string
 ) {
-  const spinner = ora("Fetching Neoforge information").start();
+  const spinner = ora("Fetching NeoForge information").start();
 
   const neoforgeVersionList: MavenVersionList = await fetchJson(
     "https://maven.neoforged.net/api/maven/versions/releases/net%2Fneoforged%2Fneoforge"
@@ -196,11 +195,11 @@ export async function downloadNeoForgeJar(
     return false;
   }
 
-  spinner.text = "Downloading Neoforge server installer";
+  spinner.text = "Downloading NeoForge server installer";
   const jarUrl = `https://maven.neoforged.net/releases/net/neoforged/neoforge/${version.neoForgeVersion}/neoforge-${version.neoForgeVersion}-installer.jar`;
   await downloadFile(jarUrl, directory, "forge-installer.jar");
 
-  await installForge(directory, javaPath, "Neoforge", spinner);
+  await installForge(directory, javaPath, "NeoForge", spinner);
   return true;
 }
 
