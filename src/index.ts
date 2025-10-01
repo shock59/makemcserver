@@ -15,6 +15,7 @@ import { fetchJson, downloadFile } from "./fetching.js";
 import {
   downloadFabricJar,
   downloadMods,
+  downloadNeoForgeJar,
   downloadPaperJar,
   downloadVanillaJar,
 } from "./jarDownloaders.js";
@@ -65,6 +66,7 @@ const questions: prompts.PromptObject<string>[] = [
     choices: [
       { title: "Fabric", value: "fabric", selected: true },
       { title: "Paper", value: "paper" },
+      { title: "NeoForge", value: "neoforge" },
       { title: "Vanilla", value: "vanilla" },
     ],
   },
@@ -132,6 +134,8 @@ const fullVersionInformation: MojangFullVersion = await fetchJson(
   versionManifest.versions.find((version) => version.id == details.version)!.url
 );
 const javaVersion = fullVersionInformation.javaVersion.majorVersion;
+const javaPath =
+  config.javaPaths?.[`${javaVersion}`] ?? config.javaPaths?.default ?? "java";
 mojangSpinner.succeed();
 
 const directory = path.resolve(cwd(), details.directory);
@@ -144,6 +148,8 @@ const moddedSoftwareDownloaded =
     ? await downloadFabricJar(details.version, directory)
     : details.software == "paper"
     ? await downloadPaperJar(details.version, directory)
+    : details.software == "neoforge"
+    ? await downloadNeoForgeJar(details.version, directory, javaPath)
     : false;
 
 if (moddedSoftwareDownloaded) {
@@ -174,18 +180,18 @@ await writeFile(
   generateServerProperties(details.port, details.properties)
 );
 
-const javaPath =
-  config.javaPaths?.[`${javaVersion}`] ?? config.javaPaths?.default ?? "java";
-const startScriptPath = path.resolve(
-  directory,
-  `start.${windows ? "cmd" : "sh"}`
-);
-await writeFile(
-  startScriptPath,
-  `${javaPath} -Xmx2G -jar server.jar nogui${windows ? "\nPAUSE" : ""}`
-);
-if (!windows) {
-  await chmod(startScriptPath, "755");
+if (details.software != "neoforge") {
+  const startScriptPath = path.resolve(
+    directory,
+    `start.${windows ? "cmd" : "sh"}`
+  );
+  await writeFile(
+    startScriptPath,
+    `${javaPath} -Xmx2G -jar server.jar nogui${windows ? "\nPAUSE" : ""}`
+  );
+  if (!windows) {
+    await chmod(startScriptPath, "755");
+  }
 }
 
 if (details.eula) {

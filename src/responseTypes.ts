@@ -27,6 +27,10 @@ export type MojangFullVersion = {
   };
 };
 
+export type NeoForgedVersionList = {
+  versions: string[];
+};
+
 export type PaperVersionList = {
   versions: Record<string, string[]>;
 };
