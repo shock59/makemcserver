@@ -1,5 +1,7 @@
 # makemcserver
 
+![NPM Version](https://img.shields.io/npm/v/makemcserver?logo=npm) ![GitHub Release](https://img.shields.io/github/v/release/shock59/makemcserver?logo=github)
+
 makemcserver is a CLI tool which can be used to easily set up a Minecraft server, useful if you need to quickly set up a server to run on your local PC without having to go into a web browser and manually download lots of files. It lets you choose any Minecraft version, and also optionally installs a custom server software of your choice (either [Fabric](https://fabricmc.net/), [Paper](https://papermc.io/), [NeoForge](https://neoforged.net/), or [Forge](https://files.minecraftforge.net/net/minecraftforge/forge/)). Additionally, it allows you to install mods from [Modrinth](https://modrinth.com/) of your choice which you can specify in a config file.
 
 ## Usage
